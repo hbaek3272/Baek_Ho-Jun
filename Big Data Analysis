@@ -1,0 +1,99 @@
+#read txt file
+d1 = read.table("~/Desktop/STAT7110/R/fat.dat.txt")
+#name columns and variables ?? tried to do this
+colnames(d1) = c("Case Number", "BFBrozek", "BFSiri", "Density", "Age", "Weight", "Height", "AdiposityIndex",
+                 "FatFreeWeight", "Neck", "Chest", "Abdomen", "Hip", "Thigh", "Knee", "Ankle", "Extbiceps", "Forearm",
+                 "Wrist")
+
+#rectify errors (replace values in the data set)
+d1[c(1,2,48,76,96),]
+#need to change the Density(column4) of rows 48, 76, 96
+d1[48,4] = 1.0865
+d1[76,4] = 1.0566
+d1[96,4] = 1.0591
+d1[42,7] = 69.5
+
+#Siri's equation
+#%BF = 495/D - 450
+d1[182,3] = 495/1.1089 - 450
+
+#Brozek's equation
+#Percentage of body fat = 457/D - 414.2
+d1[182,2] = 457/1.1089 - 414.2
+
+#model selection
+#There is no agreement in the literature about which of these two methods (i.e., Siri's equation or Brozek's equation) is best to calculate body fat percentage.
+#	Body fat percentage variation (Siri's equation) with age, weight, and height
+
+assignment <- lm(BFSiri ~ Age + Weight + Height + Neck + Chest + Abdomen + Hip +
+                   Thigh + Knee + Ankle + Extbiceps + Forearm + Wrist, data=d1)
+library(MASS)
+?stepAIC()
+stepAIC(assignment)
+#Call = the best procedural model selection
+
+#New model
+assignment2 <-lm(BFSiri ~ Age + Weight + Neck + Abdomen + Hip +
+                   Thigh + Forearm + Wrist, data=d1)
+#This is the best model according to the model selection method (i.e, AIC).
+#AIC value = 744.24
+
+summary(assignment2)
+#R-sq = 0.746
+#74.6% of the variance of the response variable is being explained by this model.
+#Age is significantly correlating with BFSiri. So with every unit increase in age, BFSiri increases by 0.66. 
+#Weight is significantly correlating with BFSiri. So with every unit increase in weight, BFSiri decreases by 0.09.
+#Neck, ....
+#Hip circumference does not significantly correlate with BFSiri. 
+#All are continuous variables.
+#AIC is used for model selection and we need a small AIC. 
+
+#Linearity
+library(ggplot2)
+library(car)
+library(effects)
+library (gvlma)
+crPlots(assignment2)
+plot(assignment2, 1)
+#Not much regarding linearity can be said about these plots.
+
+
+
+
+
+#Normality
+shapiro.test(rstandard(assignment2))
+#For fixed values of the explanatory variables, the response variable is normally distributed. 
+library(ggplot2)
+
+ggplot() +
+  geom_qq(aes(sample = rstandard(assignment2))) +
+  geom_abline(color = "red") +
+  coord_fixed()
+
+#Independence 
+durbinWatsonTest(assignment2)
+#0.054>0.050
+#The p-value is not significant, so the null hypothesis cannot be rejected. 
+#The null hypothesis states that rho = 0. 
+#rho = 0 indicates independence between different observations. 
+#The independence assumption holds. 
+#There is no correlation between the residuals of this data. 
+#There is no reason to believe that one person's BFSiri influences another person's BFSiri.
+
+#Homoscedasticity 
+ncvTest(assignment2)
+spreadLevelPlot(assignment2)
+#We cannot reject the null hypothesis. 
+#The residuals have a homoscedastic variance. 
+
+#Regression
+fix(d1)
+assignment2 <-lm(BFSiri ~ Age + Weight + Neck + Abdomen + Hip +
+                   Thigh + Forearm + Wrist, data=d1)
+summary(assignment2)
+fitted(assignment2)
+residuals(assignment2)
+plot(assignment2)
+regr <- as.data.frame(d1[,c("Case Number", 
+"BFBrozek", "BFSiri", "Density", "Age", "Weight", "Height", "AdiposityIndex", "FatFreeWeight", "Neck", "Chest", "Abdomen", "Hip", "Thigh", "Knee", "Ankle", "Extbiceps", "Forearm", "Wrist")])
